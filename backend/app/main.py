@@ -63,12 +63,22 @@ async def root():
 @app.post("/commands")
 async def log_command(command: Command, db: aiosqlite.Connection = Depends(get_db)):
     try:
+        # Check if this exact command was run recently (within last 5 minutes)
+        async with db.execute('''
+            SELECT id FROM commands 
+            WHERE command = ? 
+            AND timestamp > datetime('now', '-5 minutes')
+            LIMIT 1
+        ''', (command.command,)) as cursor:
+            if await cursor.fetchone():
+                return {"status": "skipped", "message": "Command already logged recently"}
+
+        # If not found, log the new command
         await db.execute('''
-            INSERT INTO commands (command, output, timestamp, directory, git_branch, tags)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO commands (command, timestamp, directory, git_branch, tags)
+            VALUES (?, ?, ?, ?, ?)
         ''', (
             command.command,
-            command.output,
             command.timestamp,
             command.directory,
             command.git_branch,

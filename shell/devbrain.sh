@@ -18,6 +18,11 @@ get_git_branch() {
     git rev-parse --abbrev-ref HEAD 2>/dev/null
 }
 
+# Function to escape JSON strings
+escape_json() {
+    printf '%s' "$1" | sed 's/["\\]/\\&/g' | tr '\n' 'n' | sed 's/n/\\n/g'
+}
+
 # Function to send the command to the API
 log_command() {
     [ "$DEVBRAIN_ENABLED" = false ] && return
@@ -30,29 +35,19 @@ log_command() {
     local git_branch
     git_branch=$(get_git_branch)
 
-    # Escape for JSON
+    # Escape for JSON using sed instead of Python
     local escaped_command
-    escaped_command=$(echo "$command" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
+    escaped_command=$(escape_json "$command")
     local escaped_directory
-    escaped_directory=$(echo "$directory" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
+    escaped_directory=$(escape_json "$directory")
     local escaped_git_branch
-    escaped_git_branch=$(echo "$git_branch" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read())[1:-1])')
+    escaped_git_branch=$(escape_json "$git_branch")
 
-    local payload
-    payload=$(cat <<EOF
-{
-    "command": "$escaped_command",
-    "timestamp": "$timestamp",
-    "directory": "$escaped_directory",
-    "git_branch": "$escaped_git_branch",
-    "tags": []
-}
-EOF
-)
-
+    # Send request in background without waiting for response
     (curl -s -X POST "$DEVBRAIN_API_URL/commands" \
         -H "Content-Type: application/json" \
-        -d "$payload" >> "$DEVBRAIN_LOG_FILE" 2>> "$DEVBRAIN_ERROR_LOG") &
+        -d "{\"command\":\"$escaped_command\",\"timestamp\":\"$timestamp\",\"directory\":\"$escaped_directory\",\"git_branch\":\"$escaped_git_branch\",\"tags\":[]}" \
+        >/dev/null 2>> "$DEVBRAIN_ERROR_LOG") &
 }
 
 # Pre-execution hook
