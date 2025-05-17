@@ -6,11 +6,14 @@ from typing import Optional, List
 import aiosqlite
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
-# Create database directory if it doesn't exist
-DB_DIR = Path.home() / ".devbrain"
-DB_DIR.mkdir(exist_ok=True)
-DB_PATH = DB_DIR / "devbrain.db"
+# Load environment variables
+load_dotenv()
+
+DB_PATH = os.path.expanduser(os.getenv("DEVBRAIN_DB_PATH", "~/.devbrain/devbrain.db"))
+DB_DIR = os.path.dirname(DB_PATH)
+os.makedirs(DB_DIR, exist_ok=True)
 
 app = FastAPI(title="DevBrain API")
 
@@ -25,11 +28,11 @@ app.add_middleware(
 
 # Database setup
 async def get_db():
-    async with aiosqlite.connect(str(DB_PATH)) as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         yield db
 
 async def init_db():
-    async with aiosqlite.connect(str(DB_PATH)) as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         await db.execute('''
             CREATE TABLE IF NOT EXISTS commands (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -113,5 +116,25 @@ async def search_commands(query: str, db: aiosqlite.Connection = Depends(get_db)
                     for row in results
                 ]
             }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/git/changes")
+async def get_git_changes(directory: str):
+    try:
+        with GitAnalyzer(directory) as analyzer:
+            changes = analyzer.get_changes()
+            return {
+                "status": "success",
+                "changes": [change for change in changes]
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/git/commit-message")
+async def generate_commit_message(directory: str):
+    try:
+        with GitAnalyzer(directory) as analyzer:
+            return analyzer.generate_commit_message()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 

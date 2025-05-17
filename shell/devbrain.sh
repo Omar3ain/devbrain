@@ -103,6 +103,57 @@ else:
 '
 }
 
+# Generate commit message based on changes
+devbrain_commit() {
+    local directory
+    directory=$(pwd)
+    
+    # Get commit message from API
+    local response
+    response=$(curl -s -G --data-urlencode "directory=$directory" "$DEVBRAIN_API_URL/git/commit-message")
+    
+    # Parse response using Python
+    local message
+    message=$(echo "$response" | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+if data.get("status") == "success":
+    print(data.get("message", ""))
+else:
+    print("Error: " + data.get("detail", "Unknown error"))
+    sys.exit(1)
+')
+    
+    if [ $? -eq 0 ]; then
+        echo -e "\033[1;32mSuggested commit message:\033[0m"
+        echo -e "\033[1;34m$message\033[0m"
+        
+        # Show changes
+        echo -e "\n\033[1;32mChanges:\033[0m"
+        echo "$response" | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+changes = data.get("changes", [])
+for change in changes:
+    color = "\033[1;33m"  # Yellow for modified
+    if change["change_type"] == "added":
+        color = "\033[1;32m"  # Green for added
+    elif change["change_type"] == "deleted":
+        color = "\033[1;31m"  # Red for deleted
+    print(f"{color}{change["change_type"].upper()}\033[0m {change["file_path"]}")
+'
+        
+        # Ask if user wants to commit with this message
+        echo -e "\n\033[1;33mDo you want to commit with this message? (y/N)\033[0m"
+        read -r answer
+        if [[ "$answer" =~ ^[Yy]$ ]]; then
+            git commit -m "$message"
+        fi
+    else
+        echo "$message"
+    fi
+}
+
 # Toggle logging on/off
 devbrain_toggle() {
     if [ "$DEVBRAIN_ENABLED" = true ]; then
@@ -117,3 +168,4 @@ devbrain_toggle() {
 # Export utility functions
 export -f devbrain_search
 export -f devbrain_toggle
+export -f devbrain_commit
