@@ -35,19 +35,38 @@ log_command() {
     local git_branch
     git_branch=$(get_git_branch)
 
-    # Escape for JSON using sed instead of Python
-    local escaped_command
-    escaped_command=$(escape_json "$command")
-    local escaped_directory
-    escaped_directory=$(escape_json "$directory")
-    local escaped_git_branch
-    escaped_git_branch=$(escape_json "$git_branch")
+    if command -v jq >/dev/null 2>&1; then
+        command=$(jq -Rn --arg cmd "$command" '$cmd')
+        directory=$(jq -Rn --arg dir "$directory" '$dir')
+        git_branch=$(jq -Rn --arg gb "$git_branch" '$gb')
+    else
+        command=$(printf '%s' "$command" | sed 's/"/\\"/g')
+        directory=$(printf '%s' "$directory" | sed 's/"/\\"/g')
+        git_branch=$(printf '%s' "$git_branch" | sed 's/"/\\"/g')
 
-    # Send request in background without waiting for response
-    (curl -s -X POST "$DEVBRAIN_API_URL/commands" \
-        -H "Content-Type: application/json" \
-        -d "{\"command\":\"$escaped_command\",\"timestamp\":\"$timestamp\",\"directory\":\"$escaped_directory\",\"git_branch\":\"$escaped_git_branch\",\"tags\":[]}" \
-        >/dev/null 2>> "$DEVBRAIN_ERROR_LOG") &
+        command="\"$command\""
+        directory="\"$directory\""
+        git_branch="\"$git_branch\""
+    fi
+
+    local json_data
+    json_data=$(cat <<EOF
+{
+"command": $command,
+"timestamp": "$timestamp",
+"directory": $directory,
+"git_branch": $git_branch,
+"tags": []
+}
+EOF
+)
+
+    (
+        curl -s -L -X POST "$DEVBRAIN_API_URL/commands/" \
+            -H "Content-Type: application/json" \
+            -d "$json_data" \
+            >/dev/null 2>> "$DEVBRAIN_ERROR_LOG"
+    ) &
 }
 
 # Pre-execution hook
