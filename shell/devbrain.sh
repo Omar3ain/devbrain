@@ -7,7 +7,6 @@
 DEVBRAIN_API_URL="http://localhost:8000"
 DEVBRAIN_LOG_DIR="$HOME/.devbrain/logs"
 DEVBRAIN_LOG_FILE="$DEVBRAIN_LOG_DIR/commands.log"
-DEVBRAIN_ERROR_LOG="$DEVBRAIN_LOG_DIR/error.log"
 DEVBRAIN_ENABLED=true  # Toggle with devbrain_toggle
 
 # Ensure log directories exist
@@ -56,8 +55,8 @@ EOF
         curl -s -X POST "$DEVBRAIN_API_URL/commands" \
             -H "Content-Type: application/json" \
             -d "$json_data" \
-            >/dev/null 2>> "$DEVBRAIN_ERROR_LOG"
-    ) &
+            >/dev/null 2>/dev/null
+    ) & disown
 }
 
 # Pre-execution hook
