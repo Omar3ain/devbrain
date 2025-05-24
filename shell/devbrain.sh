@@ -113,6 +113,35 @@ else:
 '
 }
 
+# Natural language command search
+devbrain_ask() {
+    local query="$1"
+    if [ -z "$query" ]; then
+        echo "Usage: devbrain_ask \"<your question>\""
+        return 1
+    fi
+
+    curl -s -G --data-urlencode "query=$query" "$DEVBRAIN_API_URL/commands/natural-search" | \
+    python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+if data.get("status") == "success":
+    message = data.get("message", "")
+    command = data.get("command", "")
+    
+    # Print the full explanation
+    print("\n\033[1;32mExplanation:\033[0m")
+    print(message)
+    
+    # Print the command in a copy-paste friendly format
+    if command:
+        print("\n\033[1;34mCommand to run:\033[0m")
+        print(f"\033[1;33m{command}\033[0m")
+    else:
+        print("\033[1;31mError:\033[0m " + data.get("detail", "Unknown error"))
+'
+}
+
 # Generate commit message based on changes
 devbrain_commit() {
     local directory
@@ -139,7 +168,6 @@ else:
         echo -e "\033[1;34m$message\033[0m"
         
         # Show changes
-        echo -e "\n\033[1;32mChanges:\033[0m"
         echo "$response" | python3 -c '
 import json, sys
 data = json.load(sys.stdin)
@@ -150,7 +178,9 @@ for change in changes:
         color = "\033[1;32m"  # Green for added
     elif change["change_type"] == "deleted":
         color = "\033[1;31m"  # Red for deleted
-    print(f"{color}{change["change_type"].upper()}\033[0m {change["file_path"]}")
+    change_type = change["change_type"].upper()
+    file_path = change["file_path"]
+    print(f"{color}{change_type}\033[0m {file_path}")
 '
         
         # Ask if user wants to commit with this message
@@ -177,5 +207,6 @@ devbrain_toggle() {
 
 # Export utility functions
 export -f devbrain_search
+export -f devbrain_ask
 export -f devbrain_toggle
 export -f devbrain_commit
