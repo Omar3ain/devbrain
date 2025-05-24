@@ -47,7 +47,10 @@ class AIClient:
         """
         try:
             response = self.client.chat.completions.create(
-                model="mistralai/mistral-7b-instruct",  # Cost-effective model
+                model="mistralai/mistral-7b-instruct",
+                # available models:
+                # model="openai/gpt-3.5-turbo",
+                # model="anthropic/claude-3-sonnet:beta",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
