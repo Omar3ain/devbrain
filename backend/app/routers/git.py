@@ -8,14 +8,22 @@ router = APIRouter(
     tags=["git"]
 )
 
+def get_staged_changes(path):
+    try:
+        os.chdir(path)
+        result = subprocess.run(['git', 'diff'], capture_output=True, text=True, check=True)
+        
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        return f"Error: {e}"
+    finally:
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 def get_git_changes(directory: str) -> List[Dict]:
     try:
-        # Change to the specified directory
         os.chdir(directory)
         
-        # Get git status
-        result = subprocess.run(['git', 'status', '--porcelain'], 
-                              capture_output=True, text=True)
+        result = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True)
         
         changes = []
         for line in result.stdout.splitlines():
@@ -35,7 +43,7 @@ def get_git_changes(directory: str) -> List[Dict]:
                     "file_path": file_path,
                     "change_type": change_type
                 })
-        
+        changes.append({"staged_changes": get_staged_changes(directory)})
         return changes
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
