@@ -25,7 +25,7 @@ class GitAnalyzer:
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    def generate_commit_message(self, changes: List[Dict]) -> Dict:
+    def generate_commit_message(self, changes: List[Dict], staged_changes: str) -> Dict:
         if not changes:
             return {
                 "status": "error",
@@ -36,50 +36,66 @@ class GitAnalyzer:
         modified_files = [c["file_path"] for c in changes if c["change_type"] == "modified"]
         added_files = [c["file_path"] for c in changes if c["change_type"] == "added"]
         deleted_files = [c["file_path"] for c in changes if c["change_type"] == "deleted"]
-
-        # Prepare context for AI
-        context = {
-            "modified": modified_files,
-            "added": added_files,
-            "deleted": deleted_files
-        }
-
+        
         # Generate commit message using AI
         try:
-            prompt = f"""As a senior software engineer, write a professional and concise git commit message for the following changes:
+            prompt = f"""
+You are a senior software engineer. Your task is to generate a single, professional, and concise git commit message for a set of code changes.
 
-Modified files: {', '.join(modified_files) if modified_files else 'None'}
-Added files: {', '.join(added_files) if added_files else 'None'}
-Deleted files: {', '.join(deleted_files) if deleted_files else 'None'}
+You MUST follow these strict formatting rules:
 
-The commit message MUST follow this format:
-type: message
+----------------------------
+FORMAT:
+<type>: <message>
 
-Where type MUST be one of:
+Valid types:
 - feat: A new feature
 - fix: A bug fix
 - docs: Documentation changes
 - style: Code style/formatting changes
 - perf: Performance improvements
 - test: Adding or modifying tests
+----------------------------
 
-Examples:
-- feat: add user authentication system
-- fix: resolve login timeout issue
-- docs: update API documentation
-- style: format code according to PEP8
-- perf: optimize database queries
-- test: add unit tests for auth module
+The message must:
+1. Start with a verb in present tense (e.g., add, fix, update, improve)
+2. Be clear and concise (no longer than a single sentence)
+3. Focus on the purpose or reason for the change — the "why"
+4. **NOT** include file names, class names, variable names, or implementation details
+5. **NOT** mention paths like `utils.py`, `GitAnalyzer`, etc.
+6. Be the only content in the output — return exactly one line in the required format
 
-The message should:
-1. Start with a verb in present tense
-2. Be clear and concise
-3. Focus on the "why" rather than the "what"
-4. Be professional and technical
+Here are the changed files:
+- Staged changes: {staged_changes}
 
-Write only the commit message in the format "type: message", no additional text."""
+Examples of good commit messages:
+- feat: implement user authentication
+- fix: prevent crash on empty login form
+- docs: update README with setup instructions
+- style: reformat code to follow PEP8
+- perf: reduce memory usage in PDF parser
+- test: add coverage for edge cases in API handler
 
-            system_prompt = "You are a senior software engineer writing git commit messages."
+❌ Bad examples (do NOT do this):
+- fix: resolve issue in GitAnalyzer class
+- feat: add EmailService to notifications.py
+- fix: change logic in settings.py
+
+✅ Good alternatives for the above:
+- fix: address parsing issue in git analysis
+- feat: add service to handle user email notifications
+- fix: improve configuration validation
+
+Checklist before returning:
+- [ ] Is the message in the format "<type>: <message>"?
+- [ ] Does it use one of the allowed types?
+- [ ] Is it a single, clear sentence?
+- [ ] Does it avoid class names, filenames, or paths?
+
+Now generate the commit message below. **Return ONLY the commit message.**
+"""
+
+            system_prompt = "You are a senior software engineer. Your only job is to write accurate, clean, and concise git commit messages. Always follow the required format and never output anything else."
             commit_message = self.ai_client.generate_response(
                 prompt=prompt,
                 system_prompt=system_prompt,
