@@ -2,16 +2,13 @@ from typing import List, Dict, Optional
 import subprocess
 from pydantic import BaseModel
 import os
-from openai import OpenAI
-from dotenv import load_dotenv
 import logging
 from git import Repo
+from .ai_client import AIClient
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-load_dotenv()
 
 class GitChange(BaseModel):
     file_path: str
@@ -20,18 +17,7 @@ class GitChange(BaseModel):
 
 class GitAnalyzer:
     def __init__(self):
-        api_key = os.getenv("OPEN_ROUTER_KEY")
-        if not api_key:
-            raise ValueError("OPEN_ROUTER_KEY environment variable is not set")
-        
-        # Configure OpenAI client for OpenRouter
-        self.client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=api_key,
-            default_headers={
-                "X-Title": "DevBrain Git Analyzer"
-            }
-        )
+        self.ai_client = AIClient()
 
     def __enter__(self):
         return self
@@ -58,7 +44,7 @@ class GitAnalyzer:
             "deleted": deleted_files
         }
 
-        # Generate commit message using OpenRouter
+        # Generate commit message using AI
         try:
             prompt = f"""As a senior software engineer, write a professional and concise git commit message for the following changes:
 
@@ -93,17 +79,12 @@ The message should:
 
 Write only the commit message in the format "type: message", no additional text."""
 
-            response = self.client.chat.completions.create(
-                model="mistralai/mistral-7b-instruct",  # Cost-effective model
-                messages=[
-                    {"role": "system", "content": "You are a senior software engineer writing git commit messages."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.7,
+            system_prompt = "You are a senior software engineer writing git commit messages."
+            commit_message = self.ai_client.generate_response(
+                prompt=prompt,
+                system_prompt=system_prompt,
                 max_tokens=100
             )
-
-            commit_message = response.choices[0].message.content.strip()
 
             return {
                 "status": "success",

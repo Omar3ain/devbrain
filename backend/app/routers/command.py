@@ -7,6 +7,7 @@ import logging
 from app.db.session import SessionLocal
 from app.models.command import Command
 from app.schemas.command import CommandCreate, Command as CommandSchema
+from app.ai_tools.command_analyzer import CommandAnalyzer
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -23,6 +24,15 @@ def get_db():
         yield db
     finally:
         db.close()
+
+@router.get("/natural-search")
+def natural_search(query: str, db: Session = Depends(get_db)):
+    try:
+        analyzer = CommandAnalyzer()
+        return analyzer.search_commands(query, db)
+    except Exception as e:
+        logger.error(f"Error in natural search: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("", response_model=CommandSchema)
 def log_command(command: CommandCreate, db: Session = Depends(get_db)):
