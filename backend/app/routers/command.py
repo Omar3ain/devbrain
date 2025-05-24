@@ -33,15 +33,16 @@ def log_command(command: CommandCreate, db: Session = Depends(get_db)):
             Command.timestamp > five_minutes_ago
         ).first()
         
-        # if recent_command:
-        #     return recent_command
-        # logger.info(f"Logging command: {command}")
+        if recent_command:
+            return recent_command
+
+        # Create new command
         db_command = Command(
             command=command.command,
             output=command.output,
             timestamp=command.timestamp if command.timestamp else datetime.utcnow(),
-            directory=command.directory,
-            git_branch=command.git_branch,
+            directory=command.directory.rstrip(),
+            git_branch=command.git_branch.rstrip(),
             tags=','.join(command.tags) if command.tags else None
         )
         

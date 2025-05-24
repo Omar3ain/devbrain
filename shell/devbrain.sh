@@ -33,36 +33,27 @@ log_command() {
     local directory
     directory=$(pwd | sed 's/^\/Users\/[^/]*/~/')
     local git_branch
-    git_branch=$(get_git_branch)
+    git_branch=$(get_git_branch | tr -d '\n')  # Remove newline from git branch
 
-    if command -v jq >/dev/null 2>&1; then
-        command=$(jq -Rn --arg cmd "$command" '$cmd')
-        directory=$(jq -Rn --arg dir "$directory" '$dir')
-        git_branch=$(jq -Rn --arg gb "$git_branch" '$gb')
-    else
-        command=$(printf '%s' "$command" | sed 's/"/\\"/g')
-        directory=$(printf '%s' "$directory" | sed 's/"/\\"/g')
-        git_branch=$(printf '%s' "$git_branch" | sed 's/"/\\"/g')
-
-        command="\"$command\""
-        directory="\"$directory\""
-        git_branch="\"$git_branch\""
-    fi
+    # Simple JSON escaping
+    command=$(printf '%s' "$command" | sed 's/"/\\"/g')
+    directory=$(printf '%s' "$directory" | sed 's/"/\\"/g')
+    git_branch=$(printf '%s' "$git_branch" | sed 's/"/\\"/g')
 
     local json_data
     json_data=$(cat <<EOF
 {
-"command": $command,
+"command": "$command",
 "timestamp": "$timestamp",
-"directory": $directory,
-"git_branch": $git_branch,
+"directory": "$directory",
+"git_branch": "$git_branch",
 "tags": []
 }
 EOF
 )
 
     (
-        curl -s -L -X POST "$DEVBRAIN_API_URL/commands/" \
+        curl -s -X POST "$DEVBRAIN_API_URL/commands" \
             -H "Content-Type: application/json" \
             -d "$json_data" \
             >/dev/null 2>> "$DEVBRAIN_ERROR_LOG"
