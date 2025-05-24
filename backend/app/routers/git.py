@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from typing import List, Dict
 import subprocess
 import os
+from app.ai_tools.git_analyzer import GitAnalyzer
 
 router = APIRouter(
     prefix="/git",
@@ -21,17 +22,8 @@ def get_staged_changes(path: str) -> str:
 
 def get_git_changes(directory: str) -> List[Dict]:
     try:
-        original_dir = os.getcwd()
         os.chdir(directory)
-        
-        result = subprocess.run(
-            ['git', 'status', '--porcelain'],
-            capture_output=True,
-            text=True
-        )
-        
-        if result.returncode != 0:
-            raise Exception(f"Git status failed: {result.stderr}")
+        result = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True)
         
         changes = []
         for line in result.stdout.splitlines():
@@ -51,7 +43,7 @@ def get_git_changes(directory: str) -> List[Dict]:
                     "file_path": file_path,
                     "change_type": change_type
                 })
-
+        
         return changes
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -73,26 +65,15 @@ def generate_commit_message(directory: str):
     try:
         if not os.path.exists(directory):
             raise HTTPException(status_code=400, detail=f"Directory not found: {directory}")
+        
+        with GitAnalyzer() as analyzer:
+            result = analyzer.generate_commit_message(get_git_changes(directory))
+            print(result)
+            if result["status"] == "error":
+                raise HTTPException(status_code=500, detail=result)
             
-        changes = get_git_changes(directory)
-        
-        # Generate a commit message based on the changes
-        message_parts = []
-        for change in changes:
-            if change["change_type"] == "added":
-                message_parts.append(f"Add {change['file_path']}")
-            elif change["change_type"] == "modified":
-                message_parts.append(f"Update {change['file_path']}")
-            elif change["change_type"] == "deleted":
-                message_parts.append(f"Remove {change['file_path']}")
-        
-        commit_message = "\n".join(message_parts)
-        
-        return {
-            "status": "success",
-            "message": commit_message,
-            "changes": changes
-        }
+            return result
+            
     except HTTPException:
         raise
     except Exception as e:
