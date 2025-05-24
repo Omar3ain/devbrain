@@ -12,7 +12,7 @@ router = APIRouter(
 def get_staged_changes(path: str) -> str:
     try:
         os.chdir(path)
-        result = subprocess.run(['git', 'diff'], capture_output=True, text=True, check=True)
+        result = subprocess.run(['git', 'diff', '--cached'], capture_output=True, text=True, check=True)
         
         return result.stdout
     except subprocess.CalledProcessError as e:
@@ -67,8 +67,7 @@ def generate_commit_message(directory: str):
             raise HTTPException(status_code=400, detail=f"Directory not found: {directory}")
         
         with GitAnalyzer() as analyzer:
-            result = analyzer.generate_commit_message(get_git_changes(directory))
-            print(result)
+            result = analyzer.generate_commit_message(get_git_changes(directory), get_staged_changes(directory))
             if result["status"] == "error":
                 raise HTTPException(status_code=500, detail=result)
             
