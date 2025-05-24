@@ -8,7 +8,7 @@ router = APIRouter(
     tags=["git"]
 )
 
-def get_staged_changes(path):
+def get_staged_changes(path: str) -> str:
     try:
         os.chdir(path)
         result = subprocess.run(['git', 'diff'], capture_output=True, text=True, check=True)
@@ -21,9 +21,17 @@ def get_staged_changes(path):
 
 def get_git_changes(directory: str) -> List[Dict]:
     try:
+        original_dir = os.getcwd()
         os.chdir(directory)
         
-        result = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True)
+        result = subprocess.run(
+            ['git', 'status', '--porcelain'],
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode != 0:
+            raise Exception(f"Git status failed: {result.stderr}")
         
         changes = []
         for line in result.stdout.splitlines():
@@ -43,7 +51,7 @@ def get_git_changes(directory: str) -> List[Dict]:
                     "file_path": file_path,
                     "change_type": change_type
                 })
-        changes.append({"staged_changes": get_staged_changes(directory)})
+
         return changes
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -54,7 +62,8 @@ def get_changes(directory: str):
         changes = get_git_changes(directory)
         return {
             "status": "success",
-            "changes": changes
+            "changes": changes,
+            "staged_changes": get_staged_changes(directory)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -62,6 +71,9 @@ def get_changes(directory: str):
 @router.get("/commit-message")
 def generate_commit_message(directory: str):
     try:
+        if not os.path.exists(directory):
+            raise HTTPException(status_code=400, detail=f"Directory not found: {directory}")
+            
         changes = get_git_changes(directory)
         
         # Generate a commit message based on the changes
@@ -81,5 +93,7 @@ def generate_commit_message(directory: str):
             "message": commit_message,
             "changes": changes
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
