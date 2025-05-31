@@ -11,21 +11,34 @@ A personal memory bank for developers that captures terminal commands, outputs, 
 
 ## Quick Start
 
-1. Install the shell hook:
+1. Install the shell integration:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/yourusername/devbrain/main/shell/install.sh | bash
+bash shell/install.sh
 ```
 
-2. Start the backend server:
+2. Reload your shell configuration (for Bash):
+
+```bash
+source ~/.bashrc
+```
+
+(For Zsh, use `source ~/.zshrc`)
+
+3. Install backend requirements:
 
 ```bash
 cd backend
 pip install -r requirements.txt
-uvicorn app.main:app --reload
 ```
 
-3. Start using DevBrain in your terminal!
+4. Start DevBrain in your terminal (this will automatically start the backend server):
+
+```bash
+devbrain_toggle
+```
+
+5. Start using DevBrain features in your terminal!
 
 ## Development
 
