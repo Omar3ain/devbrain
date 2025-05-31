@@ -76,6 +76,44 @@ cp .env.example .env
 uvicorn app.main:app --reload
 ```
 
+## Shell Commands
+
+DevBrain provides several shell functions for seamless integration:
+
+### devbrain_toggle
+
+Enable or disable DevBrain logging and automatically start/stop the backend server.
+
+```bash
+devbrain_toggle
+```
+
+### devbrain_search
+
+Search your command history using a keyword or phrase.
+
+```bash
+devbrain_search "<query>"
+```
+
+### devbrain_ask
+
+Search your command history using natural language (AI-powered).
+
+```bash
+devbrain_ask "<your question>"
+```
+
+### devbrain_commit
+
+Generate an AI-powered commit message for the current git changes and optionally commit.
+
+```bash
+devbrain_commit
+# or for a specific directory
+ devbrain_commit <directory>
+```
+
 ## Architecture
 
 - **Shell Integration**: Captures terminal commands and context
