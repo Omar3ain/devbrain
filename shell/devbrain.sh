@@ -7,7 +7,7 @@
 DEVBRAIN_API_URL="http://localhost:8000"
 DEVBRAIN_LOG_DIR="$HOME/.devbrain/logs"
 DEVBRAIN_LOG_FILE="$DEVBRAIN_LOG_DIR/commands.log"
-DEVBRAIN_ENABLED=true  # Toggle with devbrain_toggle
+DEVBRAIN_ENABLED=false  # Toggle with devbrain_toggle (disabled by default)
 
 # Ensure log directories exist
 mkdir -p "$DEVBRAIN_LOG_DIR"
