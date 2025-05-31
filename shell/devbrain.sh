@@ -9,6 +9,9 @@ DEVBRAIN_LOG_DIR="$HOME/.devbrain/logs"
 DEVBRAIN_LOG_FILE="$DEVBRAIN_LOG_DIR/commands.log"
 DEVBRAIN_ENABLED=false  # Toggle with devbrain_toggle (disabled by default)
 
+DEVBRAIN_BACKEND_PID_FILE="$HOME/.devbrain/backend.pid"
+DEVBRAIN_BACKEND_DIR="$HOME/devbrain/backend/app"
+
 # Ensure log directories exist
 mkdir -p "$DEVBRAIN_LOG_DIR"
 
@@ -197,11 +200,58 @@ for change in changes:
 devbrain_toggle() {
     if [ "$DEVBRAIN_ENABLED" = true ]; then
         DEVBRAIN_ENABLED=false
+        stop_devbrain_backend
         echo "DevBrain logging disabled"
     else
         DEVBRAIN_ENABLED=true
+        start_devbrain_backend
         echo "DevBrain logging enabled"
     fi
+}
+
+# Start backend server
+start_devbrain_backend() {
+    local orig_dir
+    orig_dir=$(pwd)
+    if [ -f "$DEVBRAIN_BACKEND_PID_FILE" ] && kill -0 "$(cat "$DEVBRAIN_BACKEND_PID_FILE")" 2>/dev/null; then
+        echo "DevBrain backend is already running."
+        return
+    fi
+
+    cd "$DEVBRAIN_BACKEND_DIR" || {
+        echo "Failed to change directory to $DEVBRAIN_BACKEND_DIR"
+        return
+    }
+
+    # Start backend with nohup and log output
+    nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > "$HOME/.devbrain/backend.log" 2>&1 &
+    echo $! > "$DEVBRAIN_BACKEND_PID_FILE"
+    echo "DevBrain backend started with PID $(cat "$DEVBRAIN_BACKEND_PID_FILE"). Logs: $HOME/.devbrain/backend.log"
+
+    cd "$orig_dir" || return
+}
+
+# Stop backend server
+stop_devbrain_backend() {
+    local orig_dir
+    orig_dir=$(pwd)
+    cd "$DEVBRAIN_BACKEND_DIR" || {
+        echo "Failed to change directory to $DEVBRAIN_BACKEND_DIR"
+        return
+    }
+    if [ -f "$DEVBRAIN_BACKEND_PID_FILE" ]; then
+        PID=$(cat "$DEVBRAIN_BACKEND_PID_FILE")
+        if kill -0 "$PID" 2>/dev/null; then
+            kill "$PID"
+            echo "DevBrain backend stopped."
+        else
+            echo "No running process found for PID $PID."
+        fi
+        rm -f "$DEVBRAIN_BACKEND_PID_FILE"
+    else
+        echo "DevBrain backend is not running."
+    fi
+    cd "$orig_dir" || return
 }
 
 # Export utility functions
