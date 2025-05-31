@@ -69,7 +69,7 @@ def generate_commit_message(directory: str):
         with GitAnalyzer() as analyzer:
             result = analyzer.generate_commit_message(get_git_changes(directory), get_staged_changes(directory))
             if result["status"] == "error":
-                raise HTTPException(status_code=500, detail=result)
+                raise HTTPException(status_code=500, detail=result.get("message", str(result)))
             
             return result
             

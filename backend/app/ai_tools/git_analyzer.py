@@ -1,14 +1,7 @@
 from typing import List, Dict, Optional
-import subprocess
 from pydantic import BaseModel
-import os
-import logging
-from git import Repo
 from .ai_client import AIClient
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 class GitChange(BaseModel):
     file_path: str
