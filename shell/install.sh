@@ -21,12 +21,14 @@ mkdir -p "$INSTALL_DIR"
 cp "$(dirname "$0")/devbrain.sh" "$INSTALL_DIR/devbrain.sh"
 chmod +x "$INSTALL_DIR/devbrain.sh"
 
-# Add to shell rc if not already present
-if ! grep -q "source $INSTALL_DIR/devbrain.sh" "$SHELL_RC"; then
-    echo "" >> "$SHELL_RC"
-    echo "# DevBrain Integration" >> "$SHELL_RC"
-    echo "source $INSTALL_DIR/devbrain.sh" >> "$SHELL_RC"
-fi
+# Remove any old sourcing lines for devbrain.sh from the shell rc file
+sed -i.bak '/devbrain\/shell\/devbrain.sh/d' "$SHELL_RC"
+sed -i.bak '/\.devbrain\/devbrain.sh/d' "$SHELL_RC"
+
+# Add to shell rc (only once)
+echo "" >> "$SHELL_RC"
+echo "# DevBrain Integration" >> "$SHELL_RC"
+echo "source $INSTALL_DIR/devbrain.sh" >> "$SHELL_RC"
 
 # Create log directories
 mkdir -p "$INSTALL_DIR/logs"
